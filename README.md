@@ -1,110 +1,175 @@
-# Suraksha — Personal Safety App
+# Suraksha: Web-Based Personal Safety Application
 
-Suraksha is a local-development web app with a plain HTML/CSS/JavaScript frontend, Java 17 + Spring Boot REST API, JWT authentication, and MySQL 8 database.
+Suraksha (Hindi for *safety*) is a web app that helps a person in danger alert their trusted contacts quickly. With one tap, it records the user's live location and prepares an emergency alert for saved contacts.
 
-## Project structure
+> **Status:** Backend (Stage 1) complete. Frontend, live tracking and voice trigger are in development. See the [Roadmap](#roadmap).
 
-- `backend/` — Spring Boot REST API (port 8080)
-- `frontend/` — HTML/CSS/JavaScript app (serve on port 5500)
-- `db/schema.sql` — MySQL database and table definitions
-- `docs/api-spec.md` — API notes
-- `.vscode/` — useful VS Code tasks
+---
 
-## Prerequisites
+## Features
 
-Install **JDK 17 or newer**, **Maven 3.8+**, **MySQL 8**, and **VS Code**. In VS Code, the Extension Pack for Java is useful but optional. Check installations in a terminal:
+**Implemented**
+- User registration and login with a phone number and a numeric PIN
+- JWT-based session authentication (12-hour tokens)
+- PINs stored as salted hashes, never in plain text
+- Manage up to 5 emergency contacts per user
+- One-tap SOS endpoint that saves the user's coordinates and returns a Google Maps link plus the contact list
+- Alert history for each user
+
+**Planned**
+- Web frontend with an SOS button using browser geolocation
+- Live location sharing through a tracking link (Leaflet and OpenStreetMap)
+- Voice-activated trigger (Web Speech API)
+- SMS fallback for low connectivity, using a pre-filled `sms:` link
+- Nearby police stations and hospitals (Overpass API)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python, Flask, REST API |
+| Authentication | Flask-JWT-Extended, Werkzeug password hashing |
+| Database | MySQL (PyMySQL driver) |
+| Frontend (planned) | HTML, CSS, JavaScript |
+| Maps (planned) | Leaflet, OpenStreetMap |
+| Tools | Git, GitHub |
+
+---
+
+## Database Design
+
+Three tables with foreign keys and cascading deletes:
+
+```
+users (id, name, phone UNIQUE, pin_hash, created_at)
+   |
+   |-- 1:N --> emergency_contacts (id, user_id FK, name, phone, UNIQUE(user_id, phone))
+   |
+   |-- 1:N --> alerts (id, user_id FK, latitude, longitude, status, created_at)
+```
+
+- Deleting a user automatically deletes their contacts and alerts (`ON DELETE CASCADE`).
+- A composite index on `alerts (user_id, created_at)` keeps alert history queries fast.
+- A unique key on `(user_id, phone)` prevents duplicate contacts.
+
+The full schema is in `schema.sql`.
+
+---
+
+## API Reference
+
+Base URL: `http://127.0.0.1:5000`. Routes marked **Auth** need the header `Authorization: Bearer <token>`.
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/api/register` | No | Create an account (`name`, `phone`, `pin`) |
+| POST | `/api/login` | No | Log in and receive a JWT (`phone`, `pin`) |
+| GET | `/api/contacts` | Yes | List emergency contacts |
+| POST | `/api/contacts` | Yes | Add a contact (`name`, `phone`) |
+| DELETE | `/api/contacts/<id>` | Yes | Delete a contact |
+| POST | `/api/sos` | Yes | Record an alert (`lat`, `lng`) |
+| GET | `/api/alerts` | Yes | View the last 50 alerts |
+| GET | `/api/health` | No | Health check |
+
+**Example**
 
 ```bash
-java -version
-mvn -version
-mysql --version
+# Register
+curl -X POST http://127.0.0.1:5000/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Asha","phone":"9876543210","pin":"1234"}'
+
+# Log in (copy the token from the response)
+curl -X POST http://127.0.0.1:5000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"phone":"9876543210","pin":"1234"}'
+
+# Send an SOS
+curl -X POST http://127.0.0.1:5000/api/sos \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"lat":26.9124,"lng":75.7873}'
 ```
 
-## 1. Open the project in VS Code
+---
 
-Extract the ZIP, then open the **`suraksha` folder** (the folder containing `backend`, `frontend`, `db`, and `docs`) in VS Code: **File → Open Folder**.
+## Getting Started
 
-## 2. Create the database
+### Prerequisites
+- Python 3.10 or newer
+- MySQL or MariaDB
 
-Start the MySQL service, then from the `suraksha` project root run:
+### Setup
 
 ```bash
-mysql -u root -p < db/schema.sql
+# 1. Clone the repository
+git clone https://github.com/<your-username>/suraksha.git
+cd suraksha
+
+# 2. Create a virtual environment and install dependencies
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 3. Create the database and tables
+mysql -u root -p < schema.sql
+
+# 4. Configure environment variables
+cp .env.example .env            # then edit .env with your values
+
+# 5. Run the server
+python app.py
 ```
 
-Enter the MySQL root password when prompted. This creates the `suraksha` database and its tables. If your MySQL root account has no password, omit `-p` only if your local MySQL setup permits it. You can verify the database with:
+Open `http://127.0.0.1:5000/api/health`. You should see `{"status": "ok"}`.
 
-```sql
-SHOW DATABASES;
-USE suraksha;
-SHOW TABLES;
-```
-
-## 3. Start the backend
-
-Open a VS Code terminal in `suraksha/backend` and set environment variables for your terminal session.
-
-**Windows PowerShell:**
-
-```powershell
-$env:DB_USER = "root"
-$env:DB_PASSWORD = "YOUR_MYSQL_PASSWORD"
-$env:JWT_SECRET = "replace-this-with-a-random-secret-at-least-32-characters-long"
-# Optional: set this only if configuring Google Sign-In
-# $env:GOOGLE_CLIENT_ID = "your-client-id.apps.googleusercontent.com"
-mvn spring-boot:run
-```
-
-**macOS / Linux:**
+### Running in GitHub Codespaces (no local install)
 
 ```bash
-export DB_USER=root
-export DB_PASSWORD='YOUR_MYSQL_PASSWORD'
-export JWT_SECRET='replace-this-with-a-random-secret-at-least-32-characters-long'
-# Optional: export GOOGLE_CLIENT_ID='your-client-id.apps.googleusercontent.com'
-mvn spring-boot:run
+sudo apt update && sudo apt install -y mariadb-server
+sudo service mariadb start
+sudo mysql < schema.sql
+sudo mysql -e "CREATE USER 'suraksha_user'@'localhost' IDENTIFIED BY 'choose_a_password'; GRANT ALL ON suraksha.* TO 'suraksha_user'@'localhost'; FLUSH PRIVILEGES;"
 ```
 
-Wait until Spring Boot reports that it has started. The API base URL is `http://localhost:8080/api/v1`. Keep this terminal running. If the database connection fails, confirm MySQL is running, the database exists, and the username/password are correct.
+Then set `DB_USER=suraksha_user` and your chosen password in `.env`, install the Python packages, and run `python app.py`.
 
-## 4. Start the frontend
+### Environment Variables
 
-Open a **second** VS Code terminal at the project root.
+| Variable | Purpose |
+|---|---|
+| `DB_HOST` | MySQL host (usually `localhost`) |
+| `DB_USER` | MySQL username |
+| `DB_PASSWORD` | MySQL password |
+| `DB_NAME` | Database name (`suraksha`) |
+| `JWT_SECRET_KEY` | Long random string used to sign tokens |
 
-```bash
-cd frontend
-python -m http.server 5500
-```
+---
 
-On systems where Python is named `python3`, use `python3 -m http.server 5500`. Open **http://localhost:5500** in Chrome or Edge. Do not open `index.html` directly as a `file://` URL. The frontend's API URL is configured in `frontend/js/api.js` as `http://localhost:8080/api/v1`.
+## Security Notes
 
-## 5. Test the app
+- PINs are hashed with Werkzeug's salted hashing.
+- All SQL uses parameterized queries, which prevents SQL injection.
+- The user ID is read from the verified JWT, never from the request body, so users can only access their own data.
+- Input is validated on every endpoint (phone format, PIN length, coordinate ranges).
+- Secrets are kept in `.env`, which is excluded from Git.
 
-1. Open the frontend and choose **Register**.
-2. Create an account using your name, phone number, and a 4–6 digit PIN.
-3. Log in with that phone number and PIN.
-4. Allow browser location permission on the dashboard.
-5. Add at least one emergency contact before testing the SOS workflow.
-6. Use **End SOS** to resolve a test alert.
+---
 
-Use a test contact/number when developing. **The current `AlertService` logs alerts; it does not deliver real SMS or email.** The offline fallback only opens the device's SMS application with a prefilled message; the user must press Send.
+## Roadmap
 
-## Google Sign-In (optional)
+- [x] **Stage 1:** Database design, authentication, contacts and SOS API
+- [ ] **Stage 2:** Frontend (login, contacts, SOS button with geolocation)
+- [ ] **Stage 3:** Live location sharing with a tracking link
+- [ ] **Stage 4:** Voice-activated trigger
+- [ ] **Stage 5:** SMS fallback and nearby safe places
 
-Create a Google OAuth **Web application** client ID. Add `http://localhost:5500` as an authorised JavaScript origin. Set the same client ID in `frontend/index.html` (`YOUR_GOOGLE_CLIENT_ID`) and the backend's `GOOGLE_CLIENT_ID` environment variable, then restart both servers. PIN login works without Google Sign-In.
+---
 
-## Troubleshooting
+## Author
 
-- **`mvn` not recognized:** install Maven and ensure it is on PATH; restart the terminal/VS Code.
-- **Java version error:** install JDK 17+ and verify `java -version`.
-- **Communications link failure / Access denied:** start MySQL and check `DB_USER` / `DB_PASSWORD`.
-- **Frontend says Failed to fetch:** ensure backend is running at port 8080 and frontend is served from `http://localhost:5500`.
-- **401 Unauthorized:** log in again; the JWT expires after one hour.
-- **Location unavailable:** allow location access in the browser. Geolocation and voice recognition require localhost or HTTPS; voice recognition support varies by browser and may require internet.
-- **Port in use:** stop the other process or change the port and update `frontend/js/api.js` accordingly.
-
-## Important limitations
-
-- Alerts are logged, not sent to contacts until an SMS/email provider is integrated.
-- A public contact tracking page is not implemented.
-- This is a development project, not a certified emergency-response service. Do not rely on it as your only means of getting help. Before real deployment, add HTTPS, production secrets, rate limiting, privacy/security review, and tested delivery monitoring.
+**Kamna Choudhary**
+B.Tech Computer Science Engineering, JECRC University, Jaipur
+[LinkedIn](https://linkedin.com/in/kamnachoudhary) | [GitHub](https://github.com/kamnachoudhary47-dev)
