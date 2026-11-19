@@ -213,6 +213,11 @@ def alert_history():
         db.close()
 
 
+@app.get("/")
+def home():
+    return app.send_static_file("index.html")
+
+
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok"})

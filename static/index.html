@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suraksha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f5f3f9;
+    --card: #ffffff;
+    --ink: #1d1a2b;
+    --muted: #6a6680;
+    --line: #dcd8e8;
+    --plum: #4a2f7a;
+    --sos: #d62839;
+    --sos-dark: #a81c2b;
+    --ok: #1f7a4d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16131f;
+      --card: #211d2f;
+      --ink: #f1eef8;
+      --muted: #a29db8;
+      --line: #382f4f;
+      --plum: #a98bff;
+      --ok: #5fd39a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  main { max-width: 460px; margin: 0 auto; padding: 20px 18px 60px; }
+  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  h1 { font-size: 1.5rem; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+  h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 10px; }
+  .sub { color: var(--muted); margin: 2px 0 0; font-size: .95rem; }
+  .hidden { display: none !important; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  label { display: block; font-size: .9rem; font-weight: 600; margin: 12px 0 4px; }
+  input {
+    width: 100%; padding: 12px; font: inherit; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  }
+  input:focus-visible, button:focus-visible, a:focus-visible {
+    outline: 3px solid var(--plum); outline-offset: 2px;
+  }
+  button {
+    font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+    padding: 10px 14px; background: var(--card); color: var(--ink);
+  }
+  button.primary { background: var(--plum); color: #fff; border-color: var(--plum); font-weight: 600; width: 100%; margin-top: 16px; padding: 12px; }
+  @media (prefers-color-scheme: dark) { button.primary { color: #16131f; } }
+  button.link { border: none; background: none; color: var(--plum); padding: 0; text-decoration: underline; }
+  button.small { padding: 6px 10px; font-size: .85rem; }
+
+  .msg { margin: 12px 0 0; font-size: .92rem; min-height: 1.2em; }
+  .msg.err { color: var(--sos); }
+  .msg.good { color: var(--ok); }
+
+  /* the one memorable element */
+  .sos-wrap { display: flex; flex-direction: column; align-items: center; padding: 10px 0 22px; }
+  #sosBtn {
+    width: 210px; height: 210px; border-radius: 50%;
+    background: var(--sos); color: #fff; border: 8px solid var(--sos-dark);
+    font-size: 3rem; font-weight: 800; letter-spacing: .02em;
+    box-shadow: 0 0 0 10px rgba(214, 40, 57, .15);
+    transition: transform .12s ease;
+  }
+  #sosBtn:active { transform: scale(.96); }
+  #sosBtn.counting { background: var(--sos-dark); font-size: 4.2rem; }
+  .sos-hint { color: var(--muted); font-size: .92rem; margin: 16px 0 0; text-align: center; }
+  #cancelBtn { margin-top: 12px; }
+
+  .sent { border-left: 6px solid var(--ok); }
+  .sent a.maplink { word-break: break-all; color: var(--plum); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: none; }
+  .row .who { min-width: 0; }
+  .row .who b { display: block; }
+  .row .who span { color: var(--muted); font-size: .88rem; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .actions a {
+    text-decoration: none; font-size: .85rem; padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--plum); color: var(--plum);
+  }
+  .add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 12px; }
+  .add input { margin: 0; }
+  .empty { color: var(--muted); font-size: .92rem; margin: 4px 0 0; }
+  @media (max-width: 380px) { .add { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { #sosBtn { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Suraksha</h1>
+      <p class="sub" id="greeting">Your safety, one tap away.</p>
+    </div>
+    <button id="logoutBtn" class="small hidden">Log out</button>
+  </header>
+
+  <!-- Signed-out view -->
+  <section id="authView" class="panel">
+    <h2 id="authTitle">Log in</h2>
+    <div id="nameRow" class="hidden">
+      <label for="name">Your name</label>
+      <input id="name" autocomplete="name">
+    </div>
+    <label for="phone">Phone number</label>
+    <input id="phone" inputmode="numeric" autocomplete="tel" placeholder="10 digits">
+    <label for="pin">PIN (4 to 6 digits)</label>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password">
+    <button id="authBtn" class="primary">Log in</button>
+    <p class="msg" id="authMsg" role="alert"></p>
+    <p class="sub"><span id="toggleText">New here?</span> <button id="toggleBtn" class="link">Create an account</button></p>
+  </section>
+
+  <!-- Signed-in view -->
+  <section id="appView" class="hidden">
+    <div class="sos-wrap">
+      <button id="sosBtn" aria-label="Send SOS alert">SOS</button>
+      <button id="cancelBtn" class="hidden">Cancel</button>
+      <p class="sos-hint" id="sosHint">Tap once. You get 3 seconds to cancel before the alert is sent.</p>
+    </div>
+
+    <div id="sentPanel" class="panel sent hidden" aria-live="polite">
+      <h2>Alert saved</h2>
+      <p class="sub">Your location: <a class="maplink" id="mapLink" target="_blank" rel="noopener"></a></p>
+      <p class="sub">Send it to your contacts now:</p>
+      <div id="sendList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Emergency contacts</h2>
+      <div id="contactList"></div>
+      <div class="add">
+        <input id="cName" placeholder="Name" aria-label="Contact name">
+        <input id="cPhone" inputmode="numeric" placeholder="Phone" aria-label="Contact phone">
+        <button id="addBtn">Add</button>
+      </div>
+      <p class="msg" id="contactMsg" role="alert"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Recent alerts</h2>
+      <div id="alertList"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var API = "/api";
+  var token = null, userName = "";
+  try { token = localStorage.getItem("suraksha_token"); userName = localStorage.getItem("suraksha_name") || ""; } catch (e) {}
+
+  var $ = function (id) { return document.getElementById(id); };
+  var mode = "login";
+  var countdownTimer = null;
+
+  function save(t, n) {
+    token = t; userName = n;
+    try { localStorage.setItem("suraksha_token", t); localStorage.setItem("suraksha_name", n); } catch (e) {}
+  }
+  function clearSession() {
+    token = null; userName = "";
+    try { localStorage.removeItem("suraksha_token"); localStorage.removeItem("suraksha_name"); } catch (e) {}
+  }
+
+  function api(path, method, body) {
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = "Bearer " + token;
+    return fetch(API + path, { method: method || "GET", headers: headers, body: body ? JSON.stringify(body) : undefined })
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (res.status === 401 && token) { logout(); }
+          if (!res.ok) throw new Error(data.error || data.msg || "Something went wrong");
+          return data;
+        });
+      });
+  }
+
+  function setMsg(el, text, kind) {
+    el.textContent = text || "";
+    el.className = "msg" + (kind ? " " + kind : "");
+  }
+
+  function mePhone(p) { return p.length === 10 ? "91" + p : p; }
+
+  /* ---------- auth ---------- */
+  function renderMode() {
+    var reg = mode === "register";
+    $("authTitle").textContent = reg ? "Create account" : "Log in";
+    $("authBtn").textContent = reg ? "Create account" : "Log in";
+    $("nameRow").classList.toggle("hidden", !reg);
+    $("toggleText").textContent = reg ? "Already registered?" : "New here?";
+    $("toggleBtn").textContent = reg ? "Log in" : "Create an account";
+    setMsg($("authMsg"), "");
+  }
+  $("toggleBtn").addEventListener("click", function () {
+    mode = mode === "login" ? "register" : "login";
+    renderMode();
+  });
+
+  $("authBtn").addEventListener("click", function () {
+    var phone = $("phone").value.trim(), pin = $("pin").value.trim(), name = $("name").value.trim();
+    setMsg($("authMsg"), "");
+    if (mode === "register") {
+      api("/register", "POST", { name: name, phone: phone, pin: pin })
+        .then(function () { return api("/login", "POST", { phone: phone, pin: pin }); })
+        .then(function (d) { save(d.token, d.name); showApp(); })
+        .catch(function (e) { setMsg($("authMsg"), e.message, "err"); });
+    } else {
+      api("/login", "POST", { phone: phone, pin: pin })
+        .then(function (d) { save(d.token, d.name); showApp(); })
+        .catch(function (e) { setMsg($("authMsg"), e.message, "err"); });
+    }
+  });
+
+  function logout() {
+    clearSession();
+    cancelCountdown();
+    $("pin").value = "";
+    $("appView").classList.add("hidden");
+    $("authView").classList.remove("hidden");
+    $("logoutBtn").classList.add("hidden");
+    $("greeting").textContent = "Your safety, one tap away.";
+  }
+  $("logoutBtn").addEventListener("click", logout);
+
+  function showApp() {
+    $("authView").classList.add("hidden");
+    $("appView").classList.remove("hidden");
+    $("logoutBtn").classList.remove("hidden");
+    $("greeting").textContent = userName ? "Hi " + userName + ". You are protected." : "You are protected.";
+    loadContacts();
+    loadAlerts();
+  }
+
+  /* ---------- contacts ---------- */
+  var contacts = [];
+  function loadContacts() {
+    return api("/contacts").then(function (list) {
+      contacts = list;
+      var box = $("contactList");
+      box.textContent = "";
+      if (!list.length) {
+        var p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "No contacts yet. Add someone who should be told when you need help.";
+        box.appendChild(p);
+        return;
+      }
+      list.forEach(function (c) {
+        var row = document.createElement("div"); row.className = "row";
+        var who = document.createElement("div"); who.className = "who";
+        var b = document.createElement("b"); b.textContent = c.name;
+        var s = document.createElement("span"); s.textContent = c.phone;
+        who.appendChild(b); who.appendChild(s);
+        var del = document.createElement("button"); del.className = "small"; del.textContent = "Remove";
+        del.addEventListener("click", function () {
+          api("/contacts/" + c.id, "DELETE").then(loadContacts).catch(function (e) { setMsg($("contactMsg"), e.message, "err"); });
+        });
+        row.appendChild(who); row.appendChild(del);
+        box.appendChild(row);
+      });
+    }).catch(function () {});
+  }
+
+  $("addBtn").addEventListener("click", function () {
+    var name = $("cName").value.trim(), phone = $("cPhone").value.trim();
+    setMsg($("contactMsg"), "");
+    api("/contacts", "POST", { name: name, phone: phone })
+      .then(function () { $("cName").value = ""; $("cPhone").value = ""; setMsg($("contactMsg"), "Contact added", "good"); return loadContacts(); })
+      .catch(function (e) { setMsg($("contactMsg"), e.message, "err"); });
+  });
+
+  /* ---------- alerts ---------- */
+  function loadAlerts() {
+    return api("/alerts").then(function (list) {
+      var box = $("alertList");
+      box.textContent = "";
+      if (!list.length) {
+        var p = document.createElement("p"); p.className = "empty";
+        p.textContent = "No alerts sent yet.";
+        box.appendChild(p);
+        return;
+      }
+      list.slice(0, 5).forEach(function (a) {
+        var row = document.createElement("div"); row.className = "row";
+        var who = document.createElement("div"); who.className = "who";
+        var b = document.createElement("b"); b.textContent = new Date(a.created_at + "Z").toLocaleString();
+        var s = document.createElement("span"); s.textContent = a.latitude.toFixed(4) + ", " + a.longitude.toFixed(4);
+        who.appendChild(b); who.appendChild(s);
+        var link = document.createElement("a");
+        link.href = "https://www.google.com/maps?q=" + a.latitude + "," + a.longitude;
+        link.target = "_blank"; link.rel = "noopener"; link.textContent = "Map";
+        link.className = "small";
+        row.appendChild(who); row.appendChild(link);
+        box.appendChild(row);
+      });
+    }).catch(function () {});
+  }
+
+  /* ---------- SOS with 3-second cancel window ---------- */
+  function cancelCountdown() {
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    $("sosBtn").classList.remove("counting");
+    $("sosBtn").textContent = "SOS";
+    $("cancelBtn").classList.add("hidden");
+  }
+
+  $("sosBtn").addEventListener("click", function () {
+    if (countdownTimer) return;
+    $("sentPanel").classList.add("hidden");
+    var left = 3;
+    $("sosBtn").classList.add("counting");
+    $("sosBtn").textContent = left;
+    $("cancelBtn").classList.remove("hidden");
+    $("sosHint").textContent = "Sending in " + left + " seconds. Tap Cancel to stop.";
+    countdownTimer = setInterval(function () {
+      left -= 1;
+      if (left > 0) {
+        $("sosBtn").textContent = left;
+        $("sosHint").textContent = "Sending in " + left + " seconds. Tap Cancel to stop.";
+      } else {
+        cancelCountdown();
+        sendSOS();
+      }
+    }, 1000);
+  });
+  $("cancelBtn").addEventListener("click", function () {
+    cancelCountdown();
+    $("sosHint").textContent = "Cancelled. No alert was sent.";
+  });
+
+  function sendSOS() {
+    $("sosHint").textContent = "Getting your location...";
+    if (!navigator.geolocation) {
+      $("sosHint").textContent = "This browser cannot share location. Try Chrome or Safari.";
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      api("/sos", "POST", { lat: pos.coords.latitude, lng: pos.coords.longitude })
+        .then(function (d) {
+          $("sosHint").textContent = "Alert saved. Now send it to your contacts below.";
+          showSent(d);
+          loadAlerts();
+        })
+        .catch(function (e) { $("sosHint").textContent = "Alert failed: " + e.message; });
+    }, function (err) {
+      $("sosHint").textContent = err.code === 1
+        ? "Location permission is blocked. Allow location for this site and try again."
+        : "Could not get your location. Move to an open area and try again.";
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+
+  function showSent(d) {
+    var text = "I need help. My live location: " + d.maps_link;
+    var m = $("mapLink"); m.href = d.maps_link; m.textContent = d.maps_link;
+    var box = $("sendList"); box.textContent = "";
+    if (!d.contacts.length) {
+      var p = document.createElement("p"); p.className = "empty";
+      p.textContent = "You have no emergency contacts. Add one below.";
+      box.appendChild(p);
+    }
+    d.contacts.forEach(function (c) {
+      var row = document.createElement("div"); row.className = "row";
+      var who = document.createElement("div"); who.className = "who";
+      var b = document.createElement("b"); b.textContent = c.name;
+      who.appendChild(b);
+      var acts = document.createElement("div"); acts.className = "actions";
+      var wa = document.createElement("a");
+      wa.href = "https://wa.me/" + mePhone(c.phone) + "?text=" + encodeURIComponent(text);
+      wa.target = "_blank"; wa.rel = "noopener"; wa.textContent = "WhatsApp";
+      var sms = document.createElement("a");
+      sms.href = "sms:" + c.phone + "?body=" + encodeURIComponent(text);
+      sms.textContent = "SMS";
+      acts.appendChild(wa); acts.appendChild(sms);
+      row.appendChild(who); row.appendChild(acts);
+      box.appendChild(row);
+    });
+    $("sentPanel").classList.remove("hidden");
+    $("sentPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  /* ---------- start ---------- */
+  renderMode();
+  if (token) showApp();
+})();
+</script>
+</body>
+</html>
