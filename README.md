@@ -2,7 +2,7 @@
 
 Suraksha (Hindi for *safety*) is a web app that helps a person in danger alert their trusted contacts quickly. With one tap, it records the user's live location and prepares an emergency alert for saved contacts.
 
-> **Status:** Backend (Stage 1) complete. Frontend, live tracking and voice trigger are in development. See the [Roadmap](#roadmap).
+> **Status:** Stages 1 and 2 complete (backend API and web frontend). Live tracking and voice trigger are in development. See the [Roadmap](#roadmap).
 
 ---
 
@@ -15,9 +15,10 @@ Suraksha (Hindi for *safety*) is a web app that helps a person in danger alert t
 - Manage up to 5 emergency contacts per user
 - One-tap SOS endpoint that saves the user's coordinates and returns a Google Maps link plus the contact list
 - Alert history for each user
+- Web frontend: login, contacts, and an SOS button with a 3-second cancel window and browser geolocation
+- WhatsApp and SMS buttons that open with the alert message and map link already filled in
 
 **Planned**
-- Web frontend with an SOS button using browser geolocation
 - Live location sharing through a tracking link (Leaflet and OpenStreetMap)
 - Voice-activated trigger (Web Speech API)
 - SMS fallback for low connectivity, using a pre-filled `sms:` link
@@ -161,7 +162,7 @@ Then set `DB_USER=suraksha_user` and your chosen password in `.env`, install the
 ## Roadmap
 
 - [x] **Stage 1:** Database design, authentication, contacts and SOS API
-- [ ] **Stage 2:** Frontend (login, contacts, SOS button with geolocation)
+- [x] **Stage 2:** Frontend (login, contacts, SOS button with geolocation)
 - [ ] **Stage 3:** Live location sharing with a tracking link
 - [ ] **Stage 4:** Voice-activated trigger
 - [ ] **Stage 5:** SMS fallback and nearby safe places
